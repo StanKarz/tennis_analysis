@@ -1,1 +1,1 @@
-from player_tracker import PlayerTracker
+from .player_tracker import PlayerTracker

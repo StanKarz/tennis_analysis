@@ -3,3 +3,5 @@
 training/data/
 training/tennis-ball-detection-final-1
 tennis_env/
+runs/
+output/

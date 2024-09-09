@@ -1,4 +1,5 @@
 from ultralytics import YOLO
+import cv2
 
 
 class PlayerTracker:
@@ -29,3 +30,13 @@ class PlayerTracker:
                 player_dict[track_id] = result
 
         return player_dict
+
+    def draw_bboxes(self, video_frames, player_detections):
+        output_frames = []
+        for frame, player_dict in zip(video_frames, player_detections):
+            # Draw bounding boxes
+            for track_id, bbox in player_dict.items():
+                x1, y1, x2, y2 = bbox
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+            output_frames.append(frame)
