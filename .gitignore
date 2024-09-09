@@ -1,0 +1,5 @@
+.DS_Store
+.vscode/
+training/data/
+training/tennis-ball-detection-final-1
+tennis_env/
