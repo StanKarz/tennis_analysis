@@ -5,3 +5,8 @@ training/tennis-ball-detection-final-1
 tennis_env/
 runs/
 output/
+__pycache__
+**/__pycache__/
+__pycache__/
+/__pycache__
+
