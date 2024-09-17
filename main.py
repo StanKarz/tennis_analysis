@@ -2,6 +2,7 @@ from utils import (read_video,
                    save_video)
 from trackers import (PlayerTracker, BallTracker)
 from court_kp_detector import CourtKPDetector
+from mini_court import MiniCourt
 import cv2
 
 
@@ -33,6 +34,9 @@ def main():
     player_detections = player_tracker.choose_and_filter_players(
         court_kps, player_detections)
 
+    # Init MiniCourt
+    mini_court = MiniCourt(video_frames[0])
+
     # Draw player bounding boxes
     output_video_frames = player_tracker.draw_bboxes(
         video_frames, player_detections)
@@ -44,6 +48,9 @@ def main():
     # TODO: Draw court keypoints (TRY A BETTER METHOD FOR INTERPOLATION)
     output_video_frames = court_kp_detector.draw_keypoints_on_video(
         output_video_frames, court_kps)
+
+    # draw MiniCourt
+    output_video_frames = mini_court.draw_minicourt(output_video_frames)
 
     # Draw frame number
     for i, frame in enumerate(output_video_frames):
