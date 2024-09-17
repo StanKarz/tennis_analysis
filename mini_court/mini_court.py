@@ -133,18 +133,34 @@ class MiniCourt:
         net_end_point = (self.drawing_kps[2], int((self.drawing_kps[1] + self.drawing_kps[5]) / 2))
         cv2.line(frame, net_start_point, net_end_point, (255, 0, 0), 2)
 
-        # # get net midpoint (ensure the division is inside the int() conversion)
-        # net_mid_x = int((net_start_point[0] + net_end_point[0]) / 2)
-        # net_mid_y = int(net_start_point[1])  # Ensure it's an integer
+        # get net midpoint (ensure the division is inside the int() conversion)
+        net_mid_x = int((net_start_point[0] + net_end_point[0]) / 2)
+        net_mid_y = int(net_start_point[1])  # Ensure it's an integer
 
-        # # get service line position and cast it to int
-        # service_line_y = int(self.court_start_y + self.convert_meteres_to_pixels(constants.SERVICE_LINE_LENGTH))
+        # get the position of the red point (which is drawing_kps[24], drawing_kps[25])
 
-        # # Draw the line from the net's midpoint to the service line
-        # cv2.line(frame, (net_mid_x, net_mid_y), (net_mid_x, service_line_y), (255, 0, 0), 2)
+        # get service line position and cast it to int
+        centerline_x1 = int(self.drawing_kps[24])
+        centerline_y1 = int(self.drawing_kps[25])
+
+        centerline_x2 = int(self.drawing_kps[26])
+        centerline_y2 = int(self.drawing_kps[27])
+
+        # Draw the line from the net's midpoint to the service line
+        cv2.line(frame, (net_mid_x, net_mid_y), (centerline_x1, centerline_y1), (0, 0, 0), 2)
+        cv2.line(frame, (net_mid_x, net_mid_y), (centerline_x2, centerline_y2), (0, 0, 0), 2)
 
         return frame
 
     def draw_minicourt(self, frames):
         output_frames = [self.draw_court(self.draw_bg_rectangle(frame)) for frame in frames]
         return output_frames
+
+    def get_start_point_minicourt(self):
+        return self.court_start_x, self.court_start_y
+
+    def get_width_minicourt(self):
+        return self.court_drawing_width
+
+    def get_court_drawing_kps(self):
+        return self.drawing_kps
