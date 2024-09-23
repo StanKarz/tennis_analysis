@@ -9,3 +9,4 @@ from .bbox_utils import (
     get_center_bbox,
 )
 from .conversions import pixel_to_distance, distance_to_pixel
+from .player_stats_draw import draw_player_stats
