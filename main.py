@@ -27,7 +27,7 @@ def main():
     ball_detections = ball_tracker.interpolate_ball_pos(ball_detections)
 
     # Detecting court keypoints
-    court_model_path = "models/keypoints_model_100resnet.pth"
+    court_model_path = "models/resnet101_keypoints_model.pth"
     court_kp_detector = CourtKPDetector(model_path=court_model_path)
     court_kps = court_kp_detector.predict(video_frames[0])
 
@@ -36,6 +36,15 @@ def main():
 
     # Init MiniCourt
     mini_court = MiniCourt(video_frames[0])
+
+    # Detect Ball Hits
+    ball_hit_frames = ball_tracker.get_ball_hit_frames(ball_detections)
+    print("Ball hit frames:", ball_hit_frames)
+
+    # convert positions to minicourt positions
+    player_minicourt_detections, ball_minicourt_detections = mini_court.convert_bb_to_minicourt_coordinates(
+        player_detections, ball_detections, court_kps
+    )
 
     # Draw player bounding boxes
     output_video_frames = player_tracker.draw_bboxes(video_frames, player_detections)
@@ -48,12 +57,16 @@ def main():
 
     # draw MiniCourt
     output_video_frames = mini_court.draw_minicourt(output_video_frames)
+    output_video_frames = mini_court.draw_points_on_minicourt(output_video_frames, player_minicourt_detections)
+    output_video_frames = mini_court.draw_points_on_minicourt(
+        output_video_frames, ball_minicourt_detections, color=(0, 255, 255)
+    )
 
     # Draw frame number
     for i, frame in enumerate(output_video_frames):
         cv2.putText(frame, f"Frame: {i}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-    save_video(output_video_frames, "output/vid_TEST.avi")
+    save_video(output_video_frames, "output/testing123.avi")
 
 
 if __name__ == "__main__":
