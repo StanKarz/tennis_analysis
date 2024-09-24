@@ -3,7 +3,8 @@ from ultralytics import YOLO
 import cv2
 import pickle
 import sys
-sys.path.append('../')
+
+sys.path.append("../")
 
 
 class PlayerTracker:
@@ -12,12 +13,12 @@ class PlayerTracker:
 
     def choose_and_filter_players(self, court_keypoints, player_detections):
         player_detections_first_frame = player_detections[0]
-        chosen_player = self.choose_players(
-            court_keypoints, player_detections_first_frame)
+        chosen_player = self.choose_players(court_keypoints, player_detections_first_frame)
         filtered_player_detections = []
         for player_dict in player_detections:
-            filtered_player_dict = {track_id: bbox for track_id,
-                                    bbox in player_dict.items() if track_id in chosen_player}
+            filtered_player_dict = {
+                track_id: bbox for track_id, bbox in player_dict.items() if track_id in chosen_player
+            }
             filtered_player_detections.append(filtered_player_dict)
         return filtered_player_detections
 
@@ -26,9 +27,9 @@ class PlayerTracker:
         for track_id, bbox in player_dict.items():
             player_center = get_center_bbox(bbox)
 
-            min_distance = float('inf')
+            min_distance = float("inf")
             for i in range(0, len(court_keypoints), 2):
-                court_keypoint = (court_keypoints[i], court_keypoints[i+1])
+                court_keypoint = (court_keypoints[i], court_keypoints[i + 1])
                 distance = measure_distance(player_center, court_keypoint)
                 if distance < min_distance:
                     min_distance = distance
@@ -36,8 +37,18 @@ class PlayerTracker:
 
         # sorrt the distances in ascending order
         distances.sort(key=lambda x: x[1])
-        # Choose the first 2 tracks
-        chosen_players = [distances[0][0], distances[1][0]]
+
+        # log distances for debugging
+        print(f"Player distances to court keypoints:{distances}")
+
+        # Choose the first 2 track_ids with the smallest distance
+        if len(distances) >= 2:
+            chosen_players = [distances[0][0], distances[1][0]]
+        else:
+            print(f"Warning only {len(distances)} players detected. Expected 2 players")
+            chosen_players = {distances[i][0] for i in range(len(distances))}
+
+        print("Chosen player IDs: {chosen_players}")
         return chosen_players
 
     def detect_frames(self, frames):
@@ -53,7 +64,7 @@ class PlayerTracker:
         player_detections = []
 
         if read_from_stub and stub_path is not None:
-            with open(stub_path, 'rb') as f:
+            with open(stub_path, "rb") as f:
                 player_detections = pickle.load(f)
             return player_detections
 
@@ -62,7 +73,7 @@ class PlayerTracker:
             player_detections.append(player_dict)
 
         if stub_path is not None:
-            with open(stub_path, 'wb') as f:
+            with open(stub_path, "wb") as f:
                 pickle.dump(player_detections, f)
 
         return player_detections
@@ -88,10 +99,16 @@ class PlayerTracker:
             # Draw Bounding Boxes
             for track_id, bbox in player_dict.items():
                 x1, y1, x2, y2 = bbox
-                cv2.putText(frame, f"Player ID: {track_id}", (int(bbox[0]), int(
-                    bbox[1] - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-                cv2.rectangle(frame, (int(x1), int(y1)),
-                              (int(x2), int(y2)), (0, 0, 255), 2)
+                cv2.putText(
+                    frame,
+                    f"Player ID: {track_id}",
+                    (int(bbox[0]), int(bbox[1] - 10)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.9,
+                    (0, 0, 255),
+                    2,
+                )
+                cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
             output_video_frames.append(frame)
 
         return output_video_frames

@@ -1,11 +1,11 @@
-from utils import read_video, save_video, measure_distance, pixel_to_distance, draw_player_stats
+from utils import read_video, save_video, draw_player_stats, measure_distance, pixel_to_distance
 from trackers import PlayerTracker, BallTracker
 from court_kp_detector import CourtKPDetector
 from mini_court import MiniCourt
 import cv2
 import pandas as pd
-import constants
 from copy import deepcopy
+import constants
 
 
 def main():
@@ -31,7 +31,6 @@ def main():
 
     # Detecting court keypoints
     court_model_path = "models/resnet101_keypoints_model.pth"
-
     court_kp_detector = CourtKPDetector(model_path=court_model_path)
     court_kps = court_kp_detector.predict(video_frames[0])
 
@@ -114,23 +113,23 @@ def main():
 
         player_stats_data.append(current_player_stats)
 
-    player_stats_data_df = pd.DataFrame(player_stats_data)
-    frames_df = pd.DataFrame({"frame_num": list(range(len(video_frames)))})
-    player_stats_data_df = pd.merge(frames_df, player_stats_data_df, on="frame_num", how="left")
-    player_stats_data_df = player_stats_data_df.ffill()
+        player_stats_data_df = pd.DataFrame(player_stats_data)
+        frames_df = pd.DataFrame({"frame_num": list(range(len(video_frames)))})
+        player_stats_data_df = pd.merge(frames_df, player_stats_data_df, on="frame_num", how="left")
+        player_stats_data_df = player_stats_data_df.ffill()
 
-    player_stats_data_df["player_1_average_shot_speed"] = (
-        player_stats_data_df["player_1_total_shot_speed"] / player_stats_data_df["player_1_number_of_shots"]
-    )
-    player_stats_data_df["player_2_average_shot_speed"] = (
-        player_stats_data_df["player_2_total_shot_speed"] / player_stats_data_df["player_2_number_of_shots"]
-    )
-    player_stats_data_df["player_1_average_player_speed"] = (
-        player_stats_data_df["player_1_total_player_speed"] / player_stats_data_df["player_2_number_of_shots"]
-    )
-    player_stats_data_df["player_2_average_player_speed"] = (
-        player_stats_data_df["player_2_total_player_speed"] / player_stats_data_df["player_1_number_of_shots"]
-    )
+        player_stats_data_df["player_1_average_shot_speed"] = (
+            player_stats_data_df["player_1_total_shot_speed"] / player_stats_data_df["player_1_number_of_shots"]
+        )
+        player_stats_data_df["player_2_average_shot_speed"] = (
+            player_stats_data_df["player_2_total_shot_speed"] / player_stats_data_df["player_2_number_of_shots"]
+        )
+        player_stats_data_df["player_1_average_player_speed"] = (
+            player_stats_data_df["player_1_total_player_speed"] / player_stats_data_df["player_2_number_of_shots"]
+        )
+        player_stats_data_df["player_2_average_player_speed"] = (
+            player_stats_data_df["player_2_total_player_speed"] / player_stats_data_df["player_1_number_of_shots"]
+        )
 
     # Draw player bounding boxes
     output_video_frames = player_tracker.draw_bboxes(video_frames, player_detections)
@@ -148,13 +147,14 @@ def main():
         output_video_frames, ball_minicourt_detections, color=(0, 255, 255)
     )
 
+    # Draw Player Stats
     output_video_frames = draw_player_stats(output_video_frames, player_stats_data_df)
 
     # Draw frame number
     for i, frame in enumerate(output_video_frames):
         cv2.putText(frame, f"Frame: {i}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-    save_video(output_video_frames, "output/TEST.avi")
+    save_video(output_video_frames, "output/testing123.avi")
 
 
 if __name__ == "__main__":
