@@ -4,6 +4,7 @@ import pickle
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy.signal import savgol_filter
 
 
 class BallTracker:
@@ -17,7 +18,7 @@ class BallTracker:
         # Convert list to pandas dataframe
         df_ball_pos = pd.DataFrame(ball_pos, columns=["x1", "y1", "x2", "y2"])
 
-        # Create a time array (assuming constant frame rate)
+        # Create a time array
         time = np.arange(len(df_ball_pos))
 
         # Interpolate each coordinate separately using cubic spline interpolation
@@ -92,7 +93,7 @@ class BallTracker:
 
         return ball_detections
 
-    def detect_frames(self, frames, read_from_stub=False, stub_path=None):
+    def detect_frames_from_stub(self, frames, read_from_stub=False, stub_path=None):
         ball_detections = []
 
         if read_from_stub and stub_path is not None:

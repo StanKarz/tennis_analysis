@@ -12,11 +12,11 @@ def detect_players_and_ball(video_frames):
     player_tracker = PlayerTracker(model_path="models/yolov8x.pt")
     ball_tracker = BallTracker(model_path="models/yolov8_trained.pt")
 
-    player_detections = player_tracker.detect_frames(
+    player_detections = player_tracker.detect_frames_from_stub(
         video_frames, read_from_stub=True, stub_path="tracker_stubs/player_detections.pkl"
     )
 
-    ball_detections = ball_tracker.detect_frames(
+    ball_detections = ball_tracker.detect_frames_from_stub(
         video_frames, read_from_stub=True, stub_path="tracker_stubs/ball_detections.pkl"
     )
 
@@ -26,7 +26,7 @@ def detect_players_and_ball(video_frames):
 
 
 def detect_court_keypoints(first_frame):
-    """Detect court keypoints in the first frame."""
+    """Detect court keypoints in the first frame (as they don't change throughout)."""
     court_model_path = "models/resnet101_keypoints_model.pth"
     court_kp_detector = CourtKPDetector(model_path=court_model_path)
     return court_kp_detector.predict(first_frame), court_kp_detector

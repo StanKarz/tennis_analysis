@@ -12,8 +12,11 @@ class PlayerTracker:
         self.model = YOLO(model_path)
 
     def choose_and_filter_players(self, court_keypoints, player_detections):
+        # Get detections for first frame to choose players
         player_detections_first_frame = player_detections[0]
         chosen_player = self.choose_players(court_keypoints, player_detections_first_frame)
+
+        # Filter detections to keep only the chosen players
         filtered_player_detections = []
         for player_dict in player_detections:
             filtered_player_dict = {
@@ -24,6 +27,8 @@ class PlayerTracker:
 
     def choose_players(self, court_keypoints, player_dict):
         distances = []
+
+        # Calculate the distane of each player to the court keypoints
         for track_id, bbox in player_dict.items():
             player_center = get_center_bbox(bbox)
 
@@ -35,13 +40,13 @@ class PlayerTracker:
                     min_distance = distance
             distances.append((track_id, min_distance))
 
-        # sorrt the distances in ascending order
+        # Sort the players by their distances in ascending order
         distances.sort(key=lambda x: x[1])
 
-        # log distances for debugging
+        # Log distances for debugging
         print(f"Player distances to court keypoints:{distances}")
 
-        # Choose the first 2 track_ids with the smallest distance
+        # Choose the first two players closest to the court
         if len(distances) >= 2:
             chosen_players = [distances[0][0], distances[1][0]]
         else:
@@ -60,18 +65,21 @@ class PlayerTracker:
 
         return player_detections
 
-    def detect_frames(self, frames, read_from_stub=False, stub_path=None):
+    def detect_frames_from_stub(self, frames, read_from_stub=False, stub_path=None):
         player_detections = []
 
+        # If reading from stub, load detections from the file
         if read_from_stub and stub_path is not None:
             with open(stub_path, "rb") as f:
                 player_detections = pickle.load(f)
             return player_detections
 
+        # Otherwise detect players in each frame
         for frame in frames:
             player_dict = self.detect_frame(frame)
             player_detections.append(player_dict)
 
+        # Save detections to a stub file
         if stub_path is not None:
             with open(stub_path, "wb") as f:
                 pickle.dump(player_detections, f)
@@ -79,13 +87,14 @@ class PlayerTracker:
         return player_detections
 
     def detect_frame(self, frame):
-        results = self.model.track(frame, persist=True)[0]
-        id_name_dict = results.names
+        results = self.model.track(frame, persist=True)[0]  # Run YOLO tracking on the frame
+        id_name_dict = results.names  # Map of object class IDs to names
 
         player_dict = {}
+        # Process each detected object and filter for "person"
         for box in results.boxes:
-            track_id = int(box.id.tolist()[0])
-            result = box.xyxy.tolist()[0]
+            track_id = int(box.id.tolist()[0])  # Get tracking ID of the object
+            result = box.xyxy.tolist()[0]  # Get the bounding box coordinates
             object_cls_id = box.cls.tolist()[0]
             object_cls_name = id_name_dict[object_cls_id]
             if object_cls_name == "person":
@@ -95,10 +104,14 @@ class PlayerTracker:
 
     def draw_bboxes(self, video_frames, player_detections):
         output_video_frames = []
+
+        # Iterate over each frame and corresponding player detections
         for frame, player_dict in zip(video_frames, player_detections):
-            # Draw Bounding Boxes
+            # Draw bounding boxes for each detected player
             for track_id, bbox in player_dict.items():
                 x1, y1, x2, y2 = bbox
+
+                # Draw player ID above the bounding box
                 cv2.putText(
                     frame,
                     f"Player ID: {track_id}",
@@ -108,6 +121,8 @@ class PlayerTracker:
                     (0, 0, 255),
                     2,
                 )
+
+                # Draw bounding box around player
                 cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
             output_video_frames.append(frame)
 
