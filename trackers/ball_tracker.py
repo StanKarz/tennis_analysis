@@ -2,6 +2,8 @@ from ultralytics import YOLO
 import cv2
 import pickle
 import pandas as pd
+import numpy as np
+from scipy.interpolate import interp1d
 
 
 class BallTracker:
@@ -9,15 +11,31 @@ class BallTracker:
         self.model = YOLO(model_path)
 
     def interpolate_ball_pos(self, ball_pos):
-        # get all x values or empty list if no ball is detected
+        # Extract ball positions or use empty lists if no ball is detected
         ball_pos = [x.get(1, []) for x in ball_pos]
-        # convert list to pandas dataframe
+
+        # Convert list to pandas dataframe
         df_ball_pos = pd.DataFrame(ball_pos, columns=["x1", "y1", "x2", "y2"])
 
-        # interpolate missing values
-        df_ball_pos = df_ball_pos.interpolate()
-        df_ball_pos = df_ball_pos.bfill()
+        # Create a time array (assuming constant frame rate)
+        time = np.arange(len(df_ball_pos))
 
+        # Interpolate each coordinate separately using cubic spline interpolation
+        for col in df_ball_pos.columns:
+            # Find non-NaN values
+            mask = ~np.isnan(df_ball_pos[col])
+            if np.sum(mask) > 3:  # Need at least 4 points for cubic interpolation
+                interp_func = interp1d(time[mask], df_ball_pos[col][mask], kind="cubic", fill_value="extrapolate")
+                df_ball_pos[col] = interp_func(time)
+            else:
+                # Fall back to linear interpolation if we have fewer than 4 points
+                interp_func = interp1d(time[mask], df_ball_pos[col][mask], kind="linear", fill_value="extrapolate")
+                df_ball_pos[col] = interp_func(time)
+
+        # Round the interpolated values to integers
+        df_ball_pos = df_ball_pos.round().astype(int)
+
+        # Convert back to the original format
         ball_pos = [{1: x} for x in df_ball_pos.to_numpy().tolist()]
 
         return ball_pos
