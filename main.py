@@ -144,9 +144,18 @@ def draw_output_frames(
     output_frames = player_tracker.draw_bboxes(video_frames, player_detections)
     output_frames = ball_tracker.draw_bboxes(output_frames, ball_detections)
     output_frames = court_kp_detector.draw_keypoints_on_video(output_frames, court_kps)
-    output_frames = mini_court.draw_minicourt(output_frames)
+    # output_frames = mini_court.draw_minicourt(output_frames)
     output_frames = mini_court.draw_points_on_minicourt(output_frames, player_minicourt_detections)
     output_frames = mini_court.draw_points_on_minicourt(output_frames, ball_minicourt_detections, color=(0, 255, 255))
+    # output_frames = mini_court.process_frames_with_heatmap(video_frames, player_minicourt_detections)
+
+    output_frames = mini_court.draw_minicourt_with_heatmaps(output_frames, player_minicourt_detections)
+    print(f"Number of output frames: {len(output_frames)}")
+
+    # Save a few frames as images
+    for i in range(0, len(output_frames), len(output_frames) // 10):  # Save every 10th frame
+        cv2.imwrite(f"output_frame_{i}.png", output_frames[i])
+
     output_frames = draw_player_stats(output_frames, player_stats_df)
 
     for i, frame in enumerate(output_frames):

@@ -12,6 +12,10 @@ import constants
 import cv2
 import sys
 import numpy as np
+from scipy.ndimage import gaussian_filter
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+
 
 sys.path.append("../")
 
@@ -23,10 +27,163 @@ class MiniCourt:
         self.buffer = 50
         self.padding_court = 20
 
+        self.heatmap_resolution = (100, 200)  # can be adjusted
+        self.heatmaps = {1: np.zeros(self.heatmap_resolution), 2: np.zeros(self.heatmap_resolution)}
+
         self.set_canvs_bg_box_pos(frame)
         self.set_minicourt_pos()
         self.set_court_drawing_kps()
         self.set_court_lines()
+
+    def update_heatmap(self, player_position):
+        for player_id, position in player_position.items():
+            x, y = position
+            x_norm = (x - self.court_start_x) / self.court_drawing_width
+            y_norm = (y - self.court_start_y) / (self.court_end_y - self.court_start_y)
+
+            if 0 <= x_norm <= 1 and 0 <= y_norm <= 1:
+                x_idx = int(x_norm * (self.heatmap_resolution[1] - 1))
+                y_idx = int(y_norm * (self.heatmap_resolution[0] - 1))
+                self.heatmaps[player_id][y_idx, x_idx] += 1
+
+        # Add debug print statements
+        print(f"Player 1 heatmap sum: {np.sum(self.heatmaps[1])}")
+        print(f"Player 2 heatmap sum: {np.sum(self.heatmaps[2])}")
+
+    def generate_heatmap_overlay(self, player_id):
+        heatmap = gaussian_filter(self.heatmaps[player_id], sigma=1)
+        heatmap = (heatmap - heatmap.min()) / (
+            heatmap.max() - heatmap.min() + 1e-8
+        )  # Add small value to avoid division by zero
+
+        # Increase the intensity of the heatmap
+        heatmap = np.power(heatmap, 0.1)  # This will make lower values more visible
+
+        colors = [(0, 0, 0, 0), (0, 0, 1, 0.8), (0, 1, 0, 0.9), (1, 0, 0, 1)]
+        cmap = LinearSegmentedColormap.from_list("custom", colors, N=256)
+
+        plt.figure(figsize=(10, 5))
+        plt.imshow(heatmap, cmap=cmap)
+        plt.axis("off")
+
+        temp_file = f"temp_heatmap_{player_id}.png"
+        plt.savefig(temp_file, format="png", bbox_inches="tight", pad_inches=0, transparent=True, dpi=300)
+        plt.close()
+
+        heatmap_img = cv2.imread(temp_file, cv2.IMREAD_UNCHANGED)
+        if heatmap_img is None:
+            print(f"Failed to read heatmap image for player {player_id}")
+            return None
+
+        heatmap_img = cv2.resize(
+            heatmap_img, (self.court_end_x - self.court_start_x, self.court_end_y - self.court_start_y)
+        )
+
+        # Add debug print
+        print(f"Heatmap shape: {heatmap_img.shape}, dtype: {heatmap_img.dtype}")
+        print(f"Heatmap min: {heatmap_img.min()}, max: {heatmap_img.max()}")  # Add this line
+
+        return heatmap_img
+
+    def draw_minicourt_with_heatmap(self, frame, player_id):
+        # Draw the basic minicourt
+        frame = self.draw_court(self.draw_bg_rectangle(frame))
+
+        # Generate and overlay the heatmap
+        heatmap_overlay = self.generate_heatmap_overlay(player_id)
+        if heatmap_overlay is None:
+            return frame
+
+        # Create a mask for the court area
+        mask = np.zeros((self.court_end_y - self.court_start_y, self.court_end_x - self.court_start_x), dtype=np.uint8)
+        cv2.rectangle(mask, (0, 0), (mask.shape[1], mask.shape[0]), 255, -1)
+
+        # Apply the mask to the heatmap
+        heatmap_overlay = cv2.bitwise_and(heatmap_overlay, heatmap_overlay, mask=mask)
+
+        # Separate the color and alpha channels
+        heatmap_bgr = heatmap_overlay[:, :, :3]
+        heatmap_alpha = heatmap_overlay[:, :, 3]
+
+        # Create a BGR image with the same dimensions as the court area
+        heatmap_bgr_3channel = np.zeros(
+            (self.court_end_y - self.court_start_y, self.court_end_x - self.court_start_x, 3), dtype=np.uint8
+        )
+        heatmap_bgr_3channel[:] = heatmap_bgr
+
+        # Normalize alpha channel
+        heatmap_alpha_normalized = heatmap_alpha.astype(float) / 255.0
+
+        # Overlay the heatmap on the frame
+        court_area = frame[self.court_start_y : self.court_end_y, self.court_start_x : self.court_end_x]
+
+        # Use addWeighted for blending instead of alpha blending
+        blended = cv2.addWeighted(court_area, 1, heatmap_bgr, 0.7, 0)
+
+        # Apply the alpha channel
+        alpha = np.expand_dims(heatmap_alpha_normalized, axis=2)
+        court_area = (1 - alpha) * court_area + alpha * blended
+
+        blending_factor = 0.7
+
+        for c in range(3):
+            court_area[:, :, c] = (
+                court_area[:, :, c] * (1 - heatmap_alpha_normalized) + heatmap_bgr[:, :, c] * heatmap_alpha_normalized
+            )
+
+        for c in range(3):
+            court_area[:, :, c] = (
+                court_area[:, :, c] * (1 - blending_factor * heatmap_alpha_normalized)
+                + heatmap_bgr[:, :, c] * blending_factor * heatmap_alpha_normalized
+            )
+
+        frame[self.court_start_y : self.court_end_y, self.court_start_x : self.court_end_x] = court_area.astype(
+            np.uint8
+        )
+
+        # Add debug prints
+        print(f"Court area shape: {court_area.shape}")
+        print(f"Heatmap overlay shape: {heatmap_overlay.shape}")
+        print(f"Frame shape: {frame.shape}")
+        print(f"Heatmap overlay min: {heatmap_overlay.min()}, max: {heatmap_overlay.max()}")  # Add this line
+
+        return frame
+
+    def process_frames_with_heatmap(self, frames, player_positions):
+        output_frames = []
+        for frame_num, frame in enumerate(frames):
+            self.update_heatmap(player_positions[frame_num])
+
+            # Draw heatmap for player 1
+            frame_with_heatmap_1 = self.draw_minicourt_with_heatmap(frame.copy(), 1)
+
+            # Draw heatmap for player 2
+            frame_with_heatmap_2 = self.draw_minicourt_with_heatmap(frame.copy(), 2)
+
+            # Combine both heatmaps
+            combined_frame = cv2.addWeighted(frame_with_heatmap_1, 0.5, frame_with_heatmap_2, 0.5, 0)
+
+            output_frames.append(combined_frame)
+
+        return output_frames
+
+    def draw_minicourt_with_heatmaps(self, frames, player_positions):
+        output_frames = []
+        for frame_num, frame in enumerate(frames):
+            self.update_heatmap(player_positions[frame_num])
+
+            # Draw heatmap for player 1
+            frame_with_heatmap_1 = self.draw_minicourt_with_heatmap(frame.copy(), 1)
+
+            # Draw heatmap for player 2
+            frame_with_heatmap_2 = self.draw_minicourt_with_heatmap(frame.copy(), 2)
+
+            # Combine both heatmaps
+            combined_frame = cv2.addWeighted(frame_with_heatmap_1, 0.5, frame_with_heatmap_2, 0.5, 0)
+
+            output_frames.append(combined_frame)
+
+        return output_frames
 
     def convert_meteres_to_pixels(self, meters):
         return distance_to_pixel(meters, constants.DOUBLE_LINE_WIDTH, self.court_drawing_width)
