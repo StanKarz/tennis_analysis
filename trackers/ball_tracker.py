@@ -139,3 +139,71 @@ class BallTracker:
             output_video_frames.append(frame)
 
         return output_video_frames
+
+    def draw_trajectory(self, frames, ball_detections, window_size=30, start_delay=10):
+        trajectory_frames = []
+
+        for i, (frame, ball_dict) in enumerate(zip(frames, ball_detections)):
+            frame_copy = frame.copy()
+
+            if i >= start_delay:
+                # Get the ball positions for the last 'window_size' frames
+                start_index = max(start_delay, i - window_size)
+                recent_detections = ball_detections[start_index : i + 1]
+
+                # Draw the trajectory
+                for j, detection in enumerate(reversed(recent_detections)):
+                    if 1 in detection and len(detection[1]) >= 4:
+                        x1, y1, x2, y2 = map(int, detection[1])
+
+                        # Calculate center of the ball
+                        center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
+
+                        # Calculate the ball's radius
+                        radius = max(2, (x2 - x1) // 2)  # Ensure a minimum size
+
+                        # Draw a solid yellow circle with varying opacity
+                        color = (0, 255, 255)  # Yellow color
+                        opacity = 0.7 * (j + 1) / len(recent_detections)
+
+                        overlay = frame_copy.copy()
+                        cv2.circle(overlay, (center_x, center_y), radius, color, -1)  # -1 fills the circle
+                        cv2.addWeighted(overlay, opacity, frame_copy, 1 - opacity, 0, frame_copy)
+
+            # Always draw the current ball position
+            if 1 in ball_dict and len(ball_dict[1]) >= 4:
+                x1, y1, x2, y2 = map(int, ball_dict[1])
+                center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
+                radius = max(2, (x2 - x1) // 2)
+                cv2.circle(frame_copy, (center_x, center_y), radius, (0, 255, 255), -1)  # Solid yellow circle
+
+            trajectory_frames.append(frame_copy)
+
+        return trajectory_frames
+
+    def overlay_ball(self, background, ball, x, y, opacity):
+        """Overlay the ball image on the background with given opacity."""
+        if ball.shape[2] == 3:
+            ball = cv2.cvtColor(ball, cv2.COLOR_BGR2BGRA)
+
+        # Create a mask of the ball
+        mask = cv2.threshold(ball[:, :, 3], 0, 255, cv2.THRESH_BINARY)[1]
+
+        # Create the overlay image with the desired opacity
+        overlay = np.zeros(background.shape, dtype=np.uint8)
+        overlay[y : y + ball.shape[0], x : x + ball.shape[1]] = ball[:, :, :3]
+
+        # Blend the overlay with the background
+        cv2.addWeighted(overlay, opacity, background, 1 - opacity, 0, background)
+
+        # Add the ball to the background using the mask
+        roi = background[y : y + ball.shape[0], x : x + ball.shape[1]]
+        result = cv2.bitwise_and(roi, roi, mask=cv2.bitwise_not(mask))
+        result += cv2.bitwise_and(
+            overlay[y : y + ball.shape[0], x : x + ball.shape[1]],
+            overlay[y : y + ball.shape[0], x : x + ball.shape[1]],
+            mask=mask,
+        )
+        background[y : y + ball.shape[0], x : x + ball.shape[1]] = result
+
+        return background
