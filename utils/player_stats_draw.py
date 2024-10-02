@@ -43,7 +43,7 @@ def draw_player_stats(output_video_frames, player_stats):
             2,
         )
 
-        text = "Shot Speed"
+        text = "Hit Speed"
         output_video_frames[index] = cv2.putText(
             output_video_frames[index],
             text,
@@ -85,7 +85,7 @@ def draw_player_stats(output_video_frames, player_stats):
             2,
         )
 
-        text = "avg. S. Speed"
+        text = "avg. Hit Speed"
         output_video_frames[index] = cv2.putText(
             output_video_frames[index],
             text,
