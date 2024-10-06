@@ -11,7 +11,7 @@ import sys
 
 
 def detect_players_and_ball(video_frames):
-    """Detect players and ball in the video frames."""
+    """Detect players and ball in the video frames using YOLOv8."""
     player_tracker = PlayerTracker(model_path="models/yolov8x.pt")
     ball_tracker = BallTracker(model_path="models/yolov8_trained.pt")
 
@@ -152,8 +152,8 @@ def draw_output_frames(
     output_frames = mini_court.draw_minicourt(output_frames)
     output_frames = mini_court.draw_points_on_minicourt(output_frames, player_minicourt_detections)
     output_frames = mini_court.draw_points_on_minicourt(output_frames, ball_minicourt_detections, color=(0, 255, 255))
-    output_frames = mini_court.draw_minicourt_with_heatmaps(output_frames, player_minicourt_detections)
-    # print(f"Number of output frames: {len(output_frames)}")
+    # output_frames = mini_court.draw_minicourt_with_heatmaps(output_frames, player_minicourt_detections)
+    print(f"Number of output frames: {len(output_frames)}")
 
     output_frames = draw_player_stats(output_frames, player_stats_df)
 
@@ -164,8 +164,23 @@ def draw_output_frames(
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Tennis Analysis")
+    parser = argparse.ArgumentParser(description="Tennis Analysis")
+    parser.add_argument(
+        "--video_path",
+        type=str,
+        default="input/input_video.mp4",
+        help="Path to the input video (default: input/input_video.mp4)",
+    )
+    parser.add_argument(
+        "--output_path", type=str, default="output", help="Path to save the output video (default: output)"
+    )
+
+    args = parser.parse_args()
+
     # Process video
-    video_frames = read_video("input/input_video.mp4")
+    # video_frames = read_video("input/input_video.mp4")
+    video_frames = read_video(args.video_path)
 
     # Detect players and ball
     player_detections, ball_detections, player_tracker, ball_tracker = detect_players_and_ball(video_frames)
@@ -209,7 +224,11 @@ def main():
     )
 
     # Save the output video
-    save_video(output_video_frames, "output/heatmap_test.avi")
+    # save_video(output_video_frames, "output/court_kps.avi")
+    os.makedirs(args.output_path, exist_ok=True)
+
+    save_video(output_video_frames, f"{args.output_path}/output.avi")
+    print(f'Output video saved at "{args.output_path}/output.avi"')
 
 
 if __name__ == "__main__":
