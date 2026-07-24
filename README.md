@@ -3,6 +3,44 @@
 ## Overview
 This project utilizes computer vision techniques to analyze tennis matches, providing in-depth insights and visualizations such as player tracking, ball trajectory, and shot statistics. By leveraging state-of-the-art deep learning models, this tool aims to assist in game analysis, player performance evaluation, and strategy formulation.
 
+## Setup
+
+Model weights are stored in **Git LFS**, so a plain `git clone` gives you 134-byte pointer
+files instead of models and nothing will run. Install `git-lfs` first:
+
+```bash
+git lfs install
+git clone https://github.com/StanKarz/tennis_analysis.git
+cd tennis_analysis
+git lfs pull                      # ~539 MB of weights
+```
+
+If you already cloned without LFS, `git lfs install && git lfs pull` from inside the repo
+fixes it.
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+(Use `python3` to create the venv — recent macOS ships no `python` binary. Once the venv is
+activated, `python` works and points at it.)
+
+Output is written to `output/`. Tracking results for the bundled clip are cached in
+`tracker_stubs/*.pkl`, so the first run reuses them rather than re-running detection over
+every frame; delete them to force a fresh pass.
+
+### A note on the two keypoint checkpoints
+
+`models/` contains two court-keypoint models. `CourtKPDetector` builds a `resnet101`, so the one
+it loads is **`keypoints_model_100resnet.pth`**:
+
+| File | Architecture | Block layout |
+|---|---|---|
+| `keypoints_model.pth` | ResNet50 | (3, 4, 6, 3) |
+| `keypoints_model_100resnet.pth` | **ResNet101** ← used | (3, 4, 23, 3) |
+
 ## Features
 
 - **Ball Detector and Tracker**:  Detects and tracks the tennis ball across frames using a fine-tuned YOLOv8 model.

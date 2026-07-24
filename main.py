@@ -30,7 +30,7 @@ def detect_players_and_ball(video_frames):
 
 def detect_court_keypoints(first_frame):
     """Detect court keypoints in the first frame (as they don't change throughout)."""
-    court_model_path = "models/resnet101_keypoints_model.pth"
+    court_model_path = "models/keypoints_model_100resnet.pth"
     court_kp_detector = CourtKPDetector(model_path=court_model_path)
     return court_kp_detector.predict(first_frame), court_kp_detector
 
